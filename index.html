@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pension Calculator</title>
+    <!-- Include the Roboto font for better appearance -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto&display=swap">
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Link to the updated CSS file -->
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+
+</head>
+<body>
+    <div class="container">
+        <h1>Pension Planner</h1>
+        <div class="content">
+            <!-- Input and Graph Container -->
+            <div class="input-graph-container">
+                <!-- Left Form -->
+                <div class="form-container form-container-left">
+                    <form id="pensionFormLeft">
+                        <div class="form-group">
+                            <label for="currentAge">Current Age:</label>
+                            <input type="number" id="currentAge" name="currentAge" value="50" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="retirementAge">Retirement Age:</label>
+                            <input type="number" id="retirementAge" name="retirementAge" value="65" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="endAge">End of Projection Age:</label>
+                            <input type="number" id="endAge" name="endAge" value="90" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="currentFund">Current Fund (£):</label>
+                            <input type="number" id="currentFund" name="currentFund" value="250000" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="monthlyContribution">Monthly Contribution (£):</label>
+                            <input type="number" id="monthlyContribution" name="monthlyContribution" value="500" required>
+                        </div>
+
+                            <!-- New ISA Inputs -->
+                            <div class="form-group">
+                                <label for="currentISA">ISA Holdings (£):</label>
+                                <input type="number" id="currentISA" name="currentISA" value="50000" required>
+                            </div>
+    
+                            <div class="form-group">
+                                <label for="monthlyISAContribution">Monthly ISA Contribution (£):</label>
+                                <input type="number" id="monthlyISAContribution" name="monthlyISAContribution" value="100" required>
+                            </div>
+
+
+                    </form>
+                </div>
+
+             
+                <!-- Graph Container -->
+                <div class="graph-container">
+                    <h2>Results</h2>
+                   
+                   
+                    <p id="expectedTotalIncome" class="centered-text"></p>
+                    <p id="taxFreeCashTaken" class="centered-text"></p>
+                    <p id="tfcLimitMessage" class="centered-text"></p>
+
+                    <!-- Move the Calculate Button here -->
+                    <button type="button" id="calculateButton" onclick="calculatePension()">Calculate</button>
+                    <canvas id="fundChart"></canvas>
+                </div>
+
+                <!-- Right Form -->
+                <div class="form-container form-container-right">
+                    <form id="pensionFormRight">
+                        <div class="form-group">
+                            <label for="fundGrowthPre">Fund Growth Pre Retirement (%):</label>
+                            <input type="number" id="fundGrowthPre" name="fundGrowthPre" value="8" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fundGrowthPost">Fund Growth In Retirement (%):</label>
+                            <input type="number" id="fundGrowthPost" name="fundGrowthPost" value="5" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fundCharges">Fund Charges (%):</label>
+                            <input type="number" id="fundCharges" name="fundCharges" value="1" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="taxFreeCashPercent">Tax Free Cash Lump Sum (%):</label>
+                            <input type="number" id="taxFreeCashPercent" name="taxFreeCashPercent" value="25" max="25" required>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <h2>Cash Flow Table</h2>
+        <div class="table-responsive">
+            <table id="cashFlowTable">
+                <thead>
+                    <tr>
+                        <th>Age</th>
+                        <th>Pension Fund (£)</th>
+                        <th>Pension Contribution (£)</th>
+                        <th>Net Pension Received (£)</th>
+                        <th>State Pension (£)</th>
+                        <th>Tax Paid (£)</th>
+                        <th>TFC Tax Savings (£)</th>
+                        <th>Cumulative TFC Taken (£)</th>
+                        <th>Pension Fund Growth (£)</th>
+                        <th>Pension Fund Charges (£)</th>
+                        <th>ISA Holdings (£)</th>
+                        <th>ISA Contributions (£)</th>
+                        <th>ISA Withdrawals (£)</th>
+                        <th>Total Net Income (£)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be added here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+ 
+  
+    <script>
+        function calculatePension() {
+            // Get inputs from the left form
+            var currentAge = parseInt(document.getElementById("currentAge").value);
+            var retirementAge = parseInt(document.getElementById("retirementAge").value);
+            var endAge = parseInt(document.getElementById("endAge").value);
+            var currentFund = parseFloat(document.getElementById("currentFund").value);
+            var monthlyContribution = parseFloat(document.getElementById("monthlyContribution").value);
+
+            // New ISA inputs
+            var currentISA = parseFloat(document.getElementById("currentISA").value);
+            var monthlyISAContribution = parseFloat(document.getElementById("monthlyISAContribution").value);
+
+            // Get inputs from the right form
+            var fundGrowthPre = parseFloat(document.getElementById("fundGrowthPre").value) / 100;
+            var fundGrowthPost = parseFloat(document.getElementById("fundGrowthPost").value) / 100;
+            var fundCharges = parseFloat(document.getElementById("fundCharges").value) / 100;
+            var taxFreeCashPercent = parseFloat(document.getElementById("taxFreeCashPercent").value) / 100;
+
+            var inflation = 0.02; // Fixed at 2%
+            var statePensionInflation = 0.025; // Fixed at 2.5%
+
+
+            // Validate inputs
+            if (isNaN(currentAge) || isNaN(retirementAge) || isNaN(endAge) || isNaN(currentFund) || isNaN(monthlyContribution) ||
+                isNaN(fundGrowthPre) || isNaN(fundGrowthPost) || isNaN(fundCharges) || isNaN(taxFreeCashPercent) ||
+                isNaN(currentISA) || isNaN(monthlyISAContribution)) {
+                alert("Please enter valid numbers in all fields.");
+                return;
+            }
+
+            if (currentAge >= retirementAge || retirementAge > endAge) {
+                alert("Ensure that Current Age < Retirement Age ≤ End of Projection Age.");
+                return;
+            }
+
+            if (taxFreeCashPercent > 0.25) {
+                alert("Tax Free Cash % cannot exceed 25%.");
+                return;
+            }
+
+            if (monthlyISAContribution > 1666) {
+                alert("Maximum Annual ISA Contribution is £20,000.");
+                return;
+            }
+
+
+            var annualContribution = monthlyContribution * 12;
+            var annualISAContribution = monthlyISAContribution * 12;
+
+            var currentStatePension = 10600.20
+            var statePensionAge = getStatePensionAge(currentAge);
+            var statePension = calculateStatePension(currentAge,currentStatePension,statePensionInflation)
+
+
+            // First, simulate fund growth to retirement to calculate available tax-free cash
+            var simulationToRetirement = simulateFundToRetirement(currentAge, retirementAge, currentFund, annualContribution, fundGrowthPre, fundCharges, currentISA, annualISAContribution);
+
+            var fundAtRetirement = simulationToRetirement.fundAtRetirement;
+            var ISAAtRetirement = simulationToRetirement.ISAAtRetirement;
+
+            // Calculate tax-free cash taken
+            var maxTFCAmount = 268275;
+            var requestedTFC = fundAtRetirement * taxFreeCashPercent;
+            var taxFreeCashTaken = Math.min(requestedTFC, maxTFCAmount);
+
+            // Display message if TFC is limited to the maximum
+            if (requestedTFC > maxTFCAmount) {
+                document.getElementById("tfcLimitMessage").innerHTML = 'TFC Taken at Retirement is limited to the maximum of £268,275.';
+            } 
+            document.getElementById("tfcLimitMessage").className = "centered-text";
+
+            // Adjust the fund balance after taking tax-free cash
+            var adjustedFund = fundAtRetirement - taxFreeCashTaken;
+
+            // Remaining tax-free cash percentage for phased withdrawal
+            var remainingTFCPercent = 0.25 - (taxFreeCashTaken / (fundAtRetirement || 1)); // Avoid division by zero
+
+            // Find the maximum affordable gross pension with the adjusted fund
+            var maxAffordableGrossPension = findMaximumAffordablePension(currentAge, retirementAge, endAge, adjustedFund, fundGrowthPost, fundCharges, inflation, remainingTFCPercent, taxFreeCashTaken, statePensionAge, statePension, statePensionInflation);
+
+            // Get net pension from the first year of drawdown
+            var netAnnualPension = calculateNetPension(maxAffordableGrossPension, remainingTFCPercent, taxFreeCashTaken);
+            var netMonthlyPension = netAnnualPension / 12;
+            var netAnnualStatePension = statePension - calculateIncomeTax(statePension);
+
+
+            // Calculate maximum affordable ISA withdrawal
+            var maxAffordableISAWithdrawal = findMaximumAffordableISAWithdrawal(retirementAge, endAge, ISAAtRetirement, fundGrowthPost, fundCharges, inflation);
+
+            var netMonthlyISAWithdrawal = maxAffordableISAWithdrawal / 12;
+
+            var totalNetAnnualIncome = netAnnualPension + netAnnualStatePension + maxAffordableISAWithdrawal;
+
+
+            // Display tax-free cash taken
+            document.getElementById("taxFreeCashTaken").innerHTML = 'Tax-Free Cash Lump Sum at Retirement: <strong>£' + formatNumber(Math.round(taxFreeCashTaken)) + '</strong>';
+
+            // Display expected net monthly pension and ISA withdrawals
+            document.getElementById("expectedTotalIncome").innerHTML = 'Total Net Monthly Retirement Income (Pension + ISA) : <strong>£' + formatNumber(Math.round(totalNetAnnualIncome/12)) + '</strong>';
+
+            // Simulate fund with the calculated gross pension and ISA withdrawals
+            var simulation = simulateFund(currentAge, retirementAge, endAge, currentFund, annualContribution, fundGrowthPre, fundGrowthPost, fundCharges, inflation, maxAffordableGrossPension, taxFreeCashTaken, fundAtRetirement, currentISA, annualISAContribution, ISAAtRetirement, maxAffordableISAWithdrawal, statePensionAge, statePension, statePensionInflation);
+
+            // Display message if TFC deduction ceases during drawdown
+            if (simulation.ageWhenTFCMaxed && simulation.ageWhenTFCMaxed > retirementAge) {
+                document.getElementById("tfcLimitMessage").innerHTML += '<br>Note: TFC Tax Savings will cease at age ' + simulation.ageWhenTFCMaxed + ' due to reaching the maximum TFC cumulative limit of £268,275.';
+            }
+
+            // Plot chart and display table
+            plotChart(simulation);
+            displayCashFlowTable(simulation.cashFlowData);
+
+            // Change button label to 'Recalculate' after first click
+            document.getElementById("calculateButton").innerText = "Recalculate";
+        }
+
+        function simulateFundToRetirement(currentAge, retirementAge, currentFund, annualContribution, fundGrowthPre, fundCharges, currentISA, annualISAContribution) {
+            var fund = currentFund;
+            var ISA = currentISA;
+
+            // Accumulation phase
+            for (var age = currentAge; age < retirementAge; age++) {
+                // Pension Fund Growth
+                var investmentGain = fund * fundGrowthPre;
+                var fundChargesTaken = fund * fundCharges;
+                fund = fund + investmentGain + annualContribution - fundChargesTaken;
+
+                // ISA Growth
+                var ISAGain = ISA * fundGrowthPre;
+                var ISAChargesTaken = ISA * fundCharges; // Apply fund charges to ISA
+                ISA = ISA + ISAGain + annualISAContribution - ISAChargesTaken;
+            }
+
+            return {
+                fundAtRetirement: fund,
+                ISAAtRetirement: ISA
+            };
+        }
+
+        function findMaximumAffordablePension(currentAge, retirementAge, endAge, adjustedFund, fundGrowthPost, fundCharges, inflation, remainingTFCPercent, taxFreeCashTaken, statePensionAge, statePension, statePensionInflation) {
+            var tol = 0.01; // Tolerance
+            var maxIter = 100;
+            var iter = 0;
+
+            var pensionLower = 0;
+            var pensionUpper = adjustedFund; // Maximum possible withdrawal per year
+
+            var maxPension = 0;
+            var finalFundBalance = 0;
+
+            while (iter < maxIter) {
+                maxPension = (pensionLower + pensionUpper) / 2;
+                var simulation = simulateDrawdownPhase(retirementAge, endAge, adjustedFund, fundGrowthPost, fundCharges, inflation, maxPension, remainingTFCPercent, taxFreeCashTaken,statePensionAge, statePension, statePensionInflation);
+                finalFundBalance = simulation.finalFundBalance;
+
+                if (Math.abs(finalFundBalance) < tol) {
+                    break;
+                }
+
+                if (finalFundBalance > 0) {
+                    // Pension amount too low
+                    pensionLower = maxPension;
+                } else {
+                    // Pension amount too high
+                    pensionUpper = maxPension;
+                }
+
+                iter++;
+            }
+
+            return maxPension;
+        }
+
+        function simulateDrawdownPhase(retirementAge, endAge, fund, fundGrowthPost, fundCharges, inflation, grossAnnualPension, remainingTFCPercent, taxFreeCashTaken,statePensionAge, statePension, statePensionInflation) {
+            var fundHistory = [];
+            var ageHistory = [];
+            var cashFlowData = [];
+            var grossPension = grossAnnualPension;
+            var cumulativeTFC = taxFreeCashTaken;
+            var maxTFCAmount = 268275;
+            var ageWhenTFCMaxed = null;
+            var statePensionInPayment = 0;
+
+            for (var age = retirementAge; age <= endAge; age++) {
+                var openingBalance = fund;
+                var contribution = 0;
+
+                if (age >= statePensionAge) {
+                    statePensionInPayment = statePension;
+                    grossPension = grossAnnualPension - statePensionInPayment;
+                }
+
+
+                // Calculate the tax-free portion of the pension
+                var taxFreePortion = grossPension * remainingTFCPercent;
+
+                // Adjust taxFreePortion if cumulativeTFC exceeds maxTFCAmount
+                if (cumulativeTFC >= maxTFCAmount) {
+                    taxFreePortion = 0;
+                    remainingTFCPercent = 0;
+                } else if (cumulativeTFC + taxFreePortion > maxTFCAmount) {
+                    taxFreePortion = maxTFCAmount - cumulativeTFC;
+                    remainingTFCPercent = (maxTFCAmount - cumulativeTFC) / grossPension;
+                    if (ageWhenTFCMaxed === null) {
+                        ageWhenTFCMaxed = age;
+                    }
+                }
+
+                cumulativeTFC += taxFreePortion;
+
+                var taxablePortion = grossPension - taxFreePortion;
+
+                // Calculate total taxable income
+                var totalTaxableIncome = taxablePortion + statePensionInPayment;
+
+                var taxPaid = calculateIncomeTax(totalTaxableIncome);
+                var netWithdrawal = taxablePortion - taxPaid + taxFreePortion;
+                var withdrawal = netWithdrawal;
+
+                var taxSaved = taxFreePortion; // Tax saved is the tax-free portion of the pension
+
+                var investmentGain = fund * fundGrowthPost;
+                var fundChargesTaken = fund * fundCharges;
+                fund = fund + investmentGain - grossPension - fundChargesTaken +statePensionInPayment;
+                var closingBalance = fund;
+
+                fundHistory.push(Math.round(closingBalance));
+                ageHistory.push(age);
+
+                cashFlowData.push({
+                    age: age,
+                    openingBalance: openingBalance,
+                    contribution: contribution,
+                    withdrawal: withdrawal,
+                    statePension: statePensionInPayment,
+                    taxPaid: taxPaid,
+                    taxSaved: taxSaved,
+                    cumulativeTFC: cumulativeTFC,
+                    investmentReturn: investmentGain,
+                    fundCharges: fundChargesTaken,
+                    closingBalance: closingBalance
+                });
+
+                if (fund < 0) {
+                    // Fund depleted before end age
+                    break;
+                }
+
+                // Increase gross pension with inflation
+                grossPension = grossPension * (1 + inflation);
+                statePension = statePension * (1 + statePensionInflation);
+            }
+
+            var finalFundBalance = fund;
+
+            return {
+                finalFundBalance: finalFundBalance,
+                fundHistory: fundHistory,
+                ageHistory: ageHistory,
+                cashFlowData: cashFlowData,
+                ageWhenTFCMaxed: ageWhenTFCMaxed
+            };
+        }
+
+        // Updated simulateISADrawdownPhase with fund charges
+        function simulateISADrawdownPhase(retirementAge, endAge, ISA, fundGrowthPost, fundCharges, inflation, initialWithdrawal) {
+            var ISAhistory = [];
+            var ageHistory = [];
+            var cashFlowData = [];
+            var ISAWithdrawal = initialWithdrawal;
+
+            for (var age = retirementAge; age <= endAge; age++) {
+                var ISAOpening = ISA;
+
+                var ISAGain = ISA * fundGrowthPost;
+                var ISAChargesTaken = ISA * fundCharges;
+                ISA = ISA + ISAGain - ISAChargesTaken - ISAWithdrawal;
+
+                //if (ISA < 0) {
+                    // Adjust last withdrawal if ISA is negative
+                //    ISAWithdrawal += ISA; // ISA is negative here
+                //    ISA = 0;
+                //}
+
+                ISAhistory.push(Math.round(ISA));
+                ageHistory.push(age);
+
+                cashFlowData.push({
+                    age: age,
+                    ISAOpening: ISAOpening,
+                    ISAGain: ISAGain,
+                    ISACharges: ISAChargesTaken,
+                    ISADrawings: ISAWithdrawal,
+                    ISABalance: ISA
+                });
+
+                if (ISA <= 0) {
+                    // ISA depleted before end age
+                    break;
+                }
+
+                // Increase ISA withdrawal with inflation
+                ISAWithdrawal = ISAWithdrawal * (1 + inflation);
+            }
+
+            return {
+                finalISABalance: ISA,
+                ISAhistory: ISAhistory,
+                ageHistory: ageHistory,
+                cashFlowData: cashFlowData
+            };
+        }
+
+        function findMaximumAffordableISAWithdrawal(retirementAge, endAge, ISAAtRetirement, fundGrowthPost, fundCharges, inflation) {
+            var tol = 0.01; // Tolerance
+            var maxIter = 100;
+            var iter = 0;
+
+            var withdrawalLower = 0;
+            var withdrawalUpper = ISAAtRetirement; // Maximum possible withdrawal per year
+
+            var maxWithdrawal = 0;
+            var finalISABalance = 0;
+
+            while (iter < maxIter) {
+                maxWithdrawal = (withdrawalLower + withdrawalUpper) / 2;
+                var simulation = simulateISADrawdownPhase(retirementAge, endAge, ISAAtRetirement, fundGrowthPost, fundCharges, inflation, maxWithdrawal);
+                finalISABalance = simulation.finalISABalance;
+
+                if (Math.abs(finalISABalance) < tol) {
+                    break;
+                }
+
+                if (finalISABalance > 0) {
+                    // Withdrawal too low
+                    withdrawalLower = maxWithdrawal;
+                } else {
+                    // Withdrawal too high
+                    withdrawalUpper = maxWithdrawal;
+                }
+
+                iter++;
+            }
+
+            return maxWithdrawal;
+        }
+
+        function simulateFund(currentAge, retirementAge, endAge, currentFund, annualContribution, fundGrowthPre, fundGrowthPost, fundCharges, inflation, grossAnnualPension, taxFreeCashTaken, fundAtRetirement, currentISA, annualISAContribution, ISAAtRetirement, annualISAWithdrawal, statePensionAge, statePension, statePensionInflation) {
+            var fund = currentFund;
+            var ISA = currentISA;
+            var fundHistory = [];
+            var ISAHistory = [];
+            var ageHistory = [];
+            var cashFlowData = [];
+            var remainingTFCPercent = 0.25 - (taxFreeCashTaken / (fundAtRetirement || 1)); // Avoid division by zero
+
+            // Accumulation phase
+            for (var age = currentAge; age < retirementAge; age++) {
+                var openingBalance = fund;
+                var contribution = annualContribution;
+                var withdrawal = 0;
+
+                if (currentAge >= statePensionAge) {
+                    statePensionInPayment = statePension;
+                }
+                else {
+                    var statePensionInPayment = 0;
+                }
+                
+                var taxPaid = 0;
+                var taxSaved = 0;
+                var cumulativeTFC = 0;
+                var investmentGain = fund * fundGrowthPre;
+                var fundChargesTaken = fund * fundCharges;
+                fund = fund + investmentGain + contribution - fundChargesTaken;
+                var closingBalance = fund;
+
+                // ISA
+                var ISAOpening = ISA;
+                var ISAContribution = annualISAContribution;
+                var ISADrawings = 0;
+                var ISAGain = ISA * fundGrowthPre;
+                var ISAChargesTaken = ISA * fundCharges;
+                ISA = ISA + ISAGain + ISAContribution - ISAChargesTaken;
+
+                fundHistory.push(Math.round(closingBalance));
+                ISAHistory.push(Math.round(ISA));
+                ageHistory.push(age);
+
+                cashFlowData.push({
+                    age: age,
+                    openingBalance: openingBalance,
+                    contribution: contribution,
+                    withdrawal: withdrawal,
+                    statePension: statePensionInPayment,
+                    taxPaid: taxPaid,
+                    taxSaved: taxSaved,
+                    cumulativeTFC: cumulativeTFC,
+                    investmentReturn: investmentGain,
+                    fundCharges: fundChargesTaken,
+                    ISAholdings: ISA,
+                    ISAContribution: ISAContribution,
+                    ISADrawings: ISADrawings,
+                    
+                });
+
+                statePension = statePension * (1 + statePensionInflation);
+            }
+
+            // Take tax-free cash at retirement
+            fund = fund - taxFreeCashTaken;
+
+            // Update ISA holdings at retirement
+            ISA = ISAAtRetirement;
+
+            // Drawdown phase
+            var drawdownSimulation = simulateDrawdownPhase(retirementAge, endAge, fund, fundGrowthPost, fundCharges, inflation, grossAnnualPension, remainingTFCPercent, taxFreeCashTaken, statePensionAge, statePension, statePensionInflation);
+
+            var ISADrawdownSimulation = simulateISADrawdownPhase(retirementAge, endAge, ISA, fundGrowthPost, fundCharges, inflation, annualISAWithdrawal);
+
+            // Merge accumulation and drawdown data
+            // Combine the pension and ISA drawdown data year by year
+            var pensionDrawdownData = drawdownSimulation.cashFlowData;
+            var ISADrawdownData = ISADrawdownSimulation.cashFlowData;
+
+            var maxLength = Math.max(pensionDrawdownData.length, ISADrawdownData.length);
+
+            for (var i = 0; i < maxLength; i++) {
+                var pensionData = pensionDrawdownData[i] || {};
+                var ISAData = ISADrawdownData[i] || {};
+
+                var age = pensionData.age || (ISAData.age || retirementAge + i);
+
+                cashFlowData.push({
+                    age: age,
+                    openingBalance: pensionData.openingBalance || 0,
+                    contribution: pensionData.contribution || 0,
+                    withdrawal: pensionData.withdrawal || 0,
+                    statePension: pensionData.statePension || 0,
+                    taxPaid: pensionData.taxPaid || 0,
+                    taxSaved: pensionData.taxSaved || 0,
+                    cumulativeTFC: pensionData.cumulativeTFC || 0,
+                    investmentReturn: pensionData.investmentReturn || 0,
+                    fundCharges: pensionData.fundCharges || 0,
+                    ISAholdings: ISAData.ISABalance || 0,
+                    ISAContribution: 0,
+                    ISADrawings: ISAData.ISADrawings || 0
+                   
+                });
+
+                fundHistory.push(Math.round(pensionData.closingBalance || 0));
+                ISAHistory.push(Math.round(ISAData.ISABalance || 0));
+                ageHistory.push(age);
+            }
+
+            var finalFundBalance = drawdownSimulation.finalFundBalance;
+
+            return {
+                finalFundBalance: finalFundBalance,
+                fundHistory: fundHistory,
+                ISAHistory: ISAHistory,
+                ageHistory: ageHistory,
+                cashFlowData: cashFlowData,
+                ageWhenTFCMaxed: drawdownSimulation.ageWhenTFCMaxed
+            };
+        }
+
+        function calculateNetPension(grossAnnualPension, remainingTFCPercent, taxFreeCashTaken) {
+            var maxTFCAmount = 268275;
+            var cumulativeTFC = taxFreeCashTaken;
+
+            var taxFreePortion = grossAnnualPension * remainingTFCPercent;
+
+            if (cumulativeTFC >= maxTFCAmount) {
+                taxFreePortion = 0;
+            } else if (cumulativeTFC + taxFreePortion > maxTFCAmount) {
+                taxFreePortion = maxTFCAmount - cumulativeTFC;
+            }
+
+            var taxablePortion = grossAnnualPension - taxFreePortion;
+            var taxPaid = calculateIncomeTax(taxablePortion);
+            var netAnnualPension = taxablePortion - taxPaid + taxFreePortion;
+
+            return netAnnualPension;
+        }
+
+        function calculateIncomeTax(income) {
+            // UK Income Tax Bands for 2023/24 (excluding Scotland)
+            var personalAllowance = 12570;
+            var basicRateLimit = 50270;
+            var higherRateLimit = 125140; // Threshold for additional rate
+
+            var basicRate = 0.20;
+            var higherRate = 0.40;
+            var additionalRate = 0.45;
+
+            var totalIncome = income; // Assuming no other income sources
+            var adjustedPersonalAllowance = personalAllowance;
+
+            // Reduction of personal allowance for income over £100,000
+            if (totalIncome > 100000) {
+                var reduction = Math.min((totalIncome - 100000) / 2, personalAllowance);
+                adjustedPersonalAllowance = personalAllowance - reduction;
+            }
+
+            var taxableIncome = Math.max(0, totalIncome - adjustedPersonalAllowance);
+            var tax = 0;
+
+            if (taxableIncome <= 0) {
+                tax = 0;
+            } else if (taxableIncome <= (basicRateLimit - adjustedPersonalAllowance)) {
+                tax = taxableIncome * basicRate;
+            } else if (taxableIncome <= (higherRateLimit - adjustedPersonalAllowance)) {
+                tax = (basicRateLimit - adjustedPersonalAllowance) * basicRate;
+                tax += (taxableIncome - (basicRateLimit - adjustedPersonalAllowance)) * higherRate;
+            } else {
+                tax = (basicRateLimit - adjustedPersonalAllowance) * basicRate;
+                tax += (higherRateLimit - basicRateLimit) * higherRate;
+                tax += (taxableIncome - (higherRateLimit - adjustedPersonalAllowance)) * additionalRate;
+            }
+
+            return tax;
+        }
+
+        // Previous function to calculate State Pension age
+        function getStatePensionAge(currentAge) {
+            const currentYear = new Date().getFullYear();
+            const birthYear = currentYear - currentAge;
+
+            if (birthYear < 1954) {
+                return 65;  // State Pension age for men born before 6 December 1953
+            } else if (birthYear >= 1954 && birthYear <= 1960) {
+                return 66;  // State Pension age for men born between 6 December 1953 and 5 April 1960
+            } else if (birthYear >= 1961 && birthYear <= 1977) {
+                return 67;  // State Pension age for men born between 6 April 1960 and 5 April 1977
+            } else if (birthYear >= 1978) {
+                return 68;  // Expected State Pension age for men born on or after 6 April 1977
+            } else {
+                return "Unknown";
+            }
+        }
+
+        // Function to calculate the basic State Pension with 2.5% annual increase
+        function calculateStatePension(currentAge, currentPension, statePensionInflation) {
+            const pensionAge = getStatePensionAge(currentAge);
+            
+            if (typeof pensionAge === "string") {
+                return "Pension age unknown";
+            }
+
+            if (currentAge >= pensionAge) {
+                return currentPension;
+            }
+
+            const yearsToPension = pensionAge - currentAge;
+
+            let futurePension = currentPension;
+            
+            // Apply 2.5% annual increase for each year until State Pension age
+            for (let i = 0; i < yearsToPension; i++) {
+                futurePension *= (1+statePensionInflation);
+            }
+
+            return futurePension.toFixed(2);  // Returns the pension rounded to 2 decimal places
+        }
+
+        function plotChart(simulation) {
+            var ctx = document.getElementById('fundChart').getContext('2d');
+            var chartData = {
+                labels: simulation.ageHistory,
+                datasets: [
+                    {
+                        label: 'Pension Fund Value (£)',
+                        data: simulation.fundHistory,
+                        borderColor: '#1E88E5', // Brighter blue for the line
+                        backgroundColor: 'rgba(30, 136, 229, 0.2)', // Light blue with tran
+                        fill: true,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'ISA Holdings (£)',
+                        data: simulation.ISAHistory,
+                        borderColor: '#FF8C00', // Brighter orange for the line
+                        backgroundColor: 'rgba(255, 140, 0, 0.2)', // Light orange 
+                        fill: true,
+                        tension: 0.1
+                    }
+                ]
+            };
+
+            if (window.myLineChart) {
+                window.myLineChart.destroy();
+            }
+
+            window.myLineChart = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Age'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Fund Value (£)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayCashFlowTable(cashFlowData) {
+            var tableBody = document.getElementById('cashFlowTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = ''; // Clear previous data
+
+            cashFlowData.forEach(function (row) {
+                var tr = document.createElement('tr');
+
+                var tdAge = document.createElement('td');
+                tdAge.textContent = row.age;
+                tr.appendChild(tdAge);
+
+                var tdOpening = document.createElement('td');
+                tdOpening.textContent = '£' + formatNumber(Math.round(row.openingBalance));
+                tr.appendChild(tdOpening);
+
+                var tdContribution = document.createElement('td');
+                tdContribution.textContent = '£' + formatNumber(Math.round(row.contribution));
+                tr.appendChild(tdContribution);
+
+                var tdWithdrawal = document.createElement('td');
+                tdWithdrawal.textContent = '£' + formatNumber(Math.round(row.withdrawal));
+                tr.appendChild(tdWithdrawal);
+
+                var tdStatePension = document.createElement('td');
+                tdStatePension.textContent = '£' + formatNumber(Math.round(row.statePension));
+                tr.appendChild(tdStatePension);
+
+                var tdTaxPaid = document.createElement('td');
+                tdTaxPaid.textContent = '£' + formatNumber(Math.round(row.taxPaid));
+                tr.appendChild(tdTaxPaid);
+
+                var tdTaxSaved = document.createElement('td');
+                tdTaxSaved.textContent = '£' + formatNumber(Math.round(row.taxSaved));
+                tr.appendChild(tdTaxSaved);
+
+                var tdCumulativeTFC = document.createElement('td');
+                tdCumulativeTFC.textContent = '£' + formatNumber(Math.round(row.cumulativeTFC));
+                tr.appendChild(tdCumulativeTFC);
+
+                var tdInvestmentReturn = document.createElement('td');
+                tdInvestmentReturn.textContent = '£' + formatNumber(Math.round(row.investmentReturn));
+                tr.appendChild(tdInvestmentReturn);
+
+                var tdFundCharges = document.createElement('td');
+                tdFundCharges.textContent = '£' + formatNumber(Math.round(row.fundCharges));
+                tr.appendChild(tdFundCharges);
+
+                var tdISAholdings = document.createElement('td');
+                tdISAholdings.textContent = '£' + formatNumber(Math.round(row.ISAholdings));
+                tr.appendChild(tdISAholdings);
+
+                var tdISAContribution = document.createElement('td');
+                tdISAContribution.textContent = '£' + formatNumber(Math.round(row.ISAContribution));
+                tr.appendChild(tdISAContribution);
+
+                var tdISADrawings = document.createElement('td');
+                tdISADrawings.textContent = '£' + formatNumber(Math.round(row.ISADrawings));
+                tr.appendChild(tdISADrawings);
+
+                var totalNetIncome = row.withdrawal + row.statePension + row.ISADrawings;
+
+                var tdTotalNetIncome = document.createElement('td');
+                tdTotalNetIncome.textContent = '£' + formatNumber(Math.round(totalNetIncome));
+                tr.appendChild(tdTotalNetIncome);
+
+               
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function formatNumber(num) {
+            return num.toLocaleString('en-UK');
+        }
+    </script>
+</body>
+</html>
