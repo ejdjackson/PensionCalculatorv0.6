@@ -151,8 +151,8 @@
             var fundCharges = parseFloat(document.getElementById("fundCharges").value) / 100;
             var taxFreeCashPercent = parseFloat(document.getElementById("taxFreeCashPercent").value) / 100;
 
-            var inflation = 0.02; // Fixed at 2%
-            var statePensionInflation = 0.025; // Fixed at 2.5%
+            var inflation = 0.00; // Fixed at 2%
+            var statePensionInflation = 0.00; // Fixed at 2.5%
 
 
             // Validate inputs
@@ -306,11 +306,11 @@
             return maxPension;
         }
 
-        function simulateDrawdownPhase(retirementAge, endAge, fund, fundGrowthPost, fundCharges, inflation, grossAnnualPension, remainingTFCPercent, taxFreeCashTaken,statePensionAge, statePension, statePensionInflation) {
+        function simulateDrawdownPhase(retirementAge, endAge, fund, fundGrowthPost, fundCharges, inflation, grossTotalPension, remainingTFCPercent, taxFreeCashTaken,statePensionAge, statePension, statePensionInflation) {
             var fundHistory = [];
             var ageHistory = [];
             var cashFlowData = [];
-            var grossPension = grossAnnualPension;
+            var grossPension = grossTotalPension;
             var cumulativeTFC = taxFreeCashTaken;
             var maxTFCAmount = 268275;
             var ageWhenTFCMaxed = null;
@@ -322,7 +322,8 @@
 
                 if (age >= statePensionAge) {
                     statePensionInPayment = statePension;
-                    grossPension = grossAnnualPension - statePensionInPayment;
+                    grossPension = Math.max(grossTotalPension - statePensionInPayment, 0);
+
                 }
 
 
@@ -383,6 +384,7 @@
 
                 // Increase gross pension with inflation
                 grossPension = grossPension * (1 + inflation);
+                grossTotalPension = grossTotalPension * (1 + inflation);
                 statePension = statePension * (1 + statePensionInflation);
             }
 
@@ -480,7 +482,7 @@
             return maxWithdrawal;
         }
 
-        function simulateFund(currentAge, retirementAge, endAge, currentFund, annualContribution, fundGrowthPre, fundGrowthPost, fundCharges, inflation, grossAnnualPension, taxFreeCashTaken, fundAtRetirement, currentISA, annualISAContribution, ISAAtRetirement, annualISAWithdrawal, statePensionAge, statePension, statePensionInflation) {
+        function simulateFund(currentAge, retirementAge, endAge, currentFund, annualContribution, fundGrowthPre, fundGrowthPost, fundCharges, inflation, grossTotalPension, taxFreeCashTaken, fundAtRetirement, currentISA, annualISAContribution, ISAAtRetirement, annualISAWithdrawal, statePensionAge, statePension, statePensionInflation) {
             var fund = currentFund;
             var ISA = currentISA;
             var fundHistory = [];
@@ -549,7 +551,7 @@
             ISA = ISAAtRetirement;
 
             // Drawdown phase
-            var drawdownSimulation = simulateDrawdownPhase(retirementAge, endAge, fund, fundGrowthPost, fundCharges, inflation, grossAnnualPension, remainingTFCPercent, taxFreeCashTaken, statePensionAge, statePension, statePensionInflation);
+            var drawdownSimulation = simulateDrawdownPhase(retirementAge, endAge, fund, fundGrowthPost, fundCharges, inflation, grossTotalPension, remainingTFCPercent, taxFreeCashTaken, statePensionAge, statePension, statePensionInflation);
 
             var ISADrawdownSimulation = simulateISADrawdownPhase(retirementAge, endAge, ISA, fundGrowthPost, fundCharges, inflation, annualISAWithdrawal);
 
@@ -600,11 +602,11 @@
             };
         }
 
-        function calculateNetPension(grossAnnualPension, remainingTFCPercent, taxFreeCashTaken) {
+        function calculateNetPension(grossTotalPension, remainingTFCPercent, taxFreeCashTaken) {
             var maxTFCAmount = 268275;
             var cumulativeTFC = taxFreeCashTaken;
 
-            var taxFreePortion = grossAnnualPension * remainingTFCPercent;
+            var taxFreePortion = grossTotalPension * remainingTFCPercent;
 
             if (cumulativeTFC >= maxTFCAmount) {
                 taxFreePortion = 0;
@@ -612,7 +614,7 @@
                 taxFreePortion = maxTFCAmount - cumulativeTFC;
             }
 
-            var taxablePortion = grossAnnualPension - taxFreePortion;
+            var taxablePortion = grossTotalPension - taxFreePortion;
             var taxPaid = calculateIncomeTax(taxablePortion);
             var netAnnualPension = taxablePortion - taxPaid + taxFreePortion;
 
